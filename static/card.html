@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <style>
+        body {
+            background-color: lightblue;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+        }
+
+        p {
+            font-family: verdana;
+            font-size: 20px;
+        }
+
+        .multiselect {
+            width: 200px;
+        }
+
+        .selectBox {
+            position: relative;
+        }
+
+        .selectBox select {
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .overSelect {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+        }
+
+        #dutSelect {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        #checkboxes {
+            display: none;
+            border: 1px #dadada solid;
+        }
+
+        #checkboxes label {
+            display: block;
+        }
+
+        #checkboxes label:hover {
+            background-color: #1e90ff;
+        }
+        #project { text-align: center; font-size:200%;}
+        #ProbeCard { position:relative; text-align:center;}
+
+        .ATELine {
+            stroke: blue;
+            stroke-width: 3;
+            opacity: 1;
+        }
+        .deviceText {
+            font-size: 12px;
+            font-weight: bold;
+            dominant-baseline: middle;
+            text-anchor: middle;
+        }
+        .idText {
+            font-size: 10px;
+            font-weight: bold;
+            dominant-baseline: middle;
+            text-anchor: middle;
+        }
+
+        .DUTText {
+            font-size: 9px;
+            font-weight: bold;
+            dominant-baseline: middle;
+            text-anchor: middle;
+        }
+
+        /*
+        .DUT {
+            stroke: black;
+            stroke-width: 1;
+            fill: transparent;
+            fill-opacity: 0.3;
+        }
+        */
+
+        .SwitchText {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .Inform {
+            stroke-width: 1;
+            fill-opacity: 0.3;
+        }
+        .AinGroup {
+            stroke: blue;
+            stroke-width: 1;
+            opacity: 1;
+        }
+        .DutInfo {
+            stroke: black;
+            stroke-width: 1;
+            fill: yellow;
+        }
+        .switchLine {
+            stroke: red;
+            stroke-width: 2;
+            opacity: 1;
+        }
+        .PS1120_line {
+            stroke: blue;
+            stroke-width: 3;
+            opacity: 1;
+        }
+        table {
+            border:1px solid red;
+        }
+    </style>
+
+    <!-- jquery Library -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <!-- 버튼 Event Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.14.3/xlsx.full.min.js"></script>
+    <!--
+    <script src="./static/constant.js"></script>
+    -->
+    <script>
+        var CHIPsPerBank;
+        var maxDUTs;
+        var maxBank;
+        var SwitchMap;
+        var device;
+        var signalsPerDut;
+        var DUTsPerBank;
+        var DUTsPerChip;
+
+//        var DUTs = [];              // DUT들에 대한 배열을 선언한다.
+        $(document).ready(function(){
+            // 부모 윈도우의 요소를 read한다.
+//            var site = opener.document.getElementById('siteNumber').value;
+
+            // 부모 윈도우의 변수를 참조한다.
+            maxDUTs = opener.maxDUTs;
+            maxBank = opener.maxBank;
+//            SwitchMap = opener.SwitchMap;
+            SwitchMap = opener.usedSwitchMap;
+            device = opener.device;
+            signalsPerDut = opener.signalsPerDut;
+            DUTsPerBank = opener.DUTsPerBank;
+            DUTsPerChip = opener.DUTsPerChip;
+            CHIPsPerBank = opener.CHIPsPerBank;
+            dbgout(`bank = ${maxBank}\n`);
+
+//            <svg id="ProbeCard" xmlns="http://www.w3.org/2000/svg" align="center" width="1280" height="860">
+
+            // SVG(Scalable Vector Graphics) 영역 생성하기.
+            var xmlns = "http://www.w3.org/2000/svg";
+            var svgTag = document.createElementNS(xmlns, "svg");
+            svgTag.setAttributeNS(null, "id", "ProbeCard");
+            svgTag.setAttributeNS(null, "align", "center");
+            var w = 620;
+            var h = 10;
+            if( maxBank <= 16 ) {
+                h += maxBank * 50;
+            } else {
+                w = 1240;
+                if( maxBank % 2 ) {     // 홀수
+                    h += ((maxBank * 25) + 25);
+                } else {                // 짝수
+                    h += (maxBank * 25);
+                }
+            }
+            svgTag.setAttributeNS(null, "width", w.toString());
+            svgTag.setAttributeNS(null, "height", h.toString());
+//            dbgout(`svg size = ${w}, ${h}\n`);
+
+            var max_chip = 8;
+
+            var x = 40;
+            var y = 10;
+            w = 40;
+            h = 40;
+
+            var Chips = 0;
+            for(var site=0; site<maxBank; site++) {
+                if( maxBank > 16 ) {
+                    if( site == parseInt(maxBank / 2 ) ) {
+                        x = 40 + 640;
+                        y = 10;
+                    }
+                }
+//                dbgout(`site = ${site}, x = ${x}, y = ${y}\n`);
+                // site(bank) name display.
+//                <text id="siteText" x="130" y="26" font-weight="bold" font-size="12px" fill="green">SPI[0]</text>
+                elem = document.createElementNS(xmlns, "text");
+//                elem.setAttribute("id", "siteId");
+                elem.setAttribute("class", "siteText");http://www.q-net.or.kr/
+                elem.setAttribute("x", (x + 10).toString());
+                elem.setAttribute("y", (y + 16).toString());
+                elem.setAttribute("font-size", "12px");
+                elem.setAttribute("font-weight", "bold");
+                elem.setAttribute("fill", "green");
+                elem.textContent = "SPI[" + site.toString() + "]";
+                svgTag.appendChild(elem);
+
+                var x1 = x;
+                var y1 = y + 20;
+                var x2 = x1 + 60;
+                var y2 = y1;
+
+                // site(bank)당 "DUTsPerBank"만큼의 DUT가 "CHIPsPerBank" 만큼의 Chip에 할당된다.
+                max_chip = CHIPsPerBank;
+                // 마지막 Bank에서 Chip의 개수를 결정한다.
+                if( site == (maxBank - 1) ) {
+                    max_chip = Math.ceil((maxDUTs % DUTsPerBank) / DUTsPerChip);
+
+                    if( max_chip == 0 ) max_chip = CHIPsPerBank;
+                }
+//                dbgout(`site = ${site}, max chip = ${max_chip}\n`);
+
+                for(var chip=0; chip<max_chip; chip++) {
+//                    dbgout(`x1 = ${x1}, x2 = ${x2}, y1 = ${y1}, y2 = ${y2}\n`);
+
+                    // site(bank) line display.
+                    elem = document.createElementNS(xmlns, "line");
+                    elem.setAttribute("class", "siteLine");
+                    elem.setAttribute("x1", x1.toString());
+                    elem.setAttribute("y1", y1.toString());
+                    elem.setAttribute("x2", x2.toString());
+                    elem.setAttribute("y2", y2.toString());
+                    elem.setAttribute("stroke", "black");
+                    elem.setAttribute("stroke-width", "1");
+                    elem.setAttribute("opacity", "1");
+                    svgTag.appendChild(elem);
+
+                    // switch device text display
+                    elem = document.createElementNS(xmlns, "text");
+//                    elem.setAttribute("id", "ChipID");
+                    elem.setAttribute("class", "deviceText");
+                    elem.setAttribute("x", (x2 + 20).toString());
+                    elem.setAttribute("y", (y1 - 6).toString());
+                    elem.textContent = Chips.toString();
+                    svgTag.appendChild(elem);
+                    elem = document.createElementNS(xmlns, "text");
+                    elem.setAttribute("class", "idText");
+                    elem.setAttribute("x", (x2 + 20).toString());
+                    elem.setAttribute("y", (y1 + 6).toString());
+                    elem.textContent = '(#' + chip.toString() + ')';
+                    svgTag.appendChild(elem);
+
+                    // switch device rect display
+                    elem = document.createElementNS(xmlns, "rect");
+//                    dbgout(`id = ${id}, Chips = ${Chips}\n`);
+//                    elem.setAttribute("id", ((site * CHIPsPerBank) + chip).toString());
+                    elem.setAttribute("id", Chips.toString());
+                    elem.setAttribute("class", "deviceRect");
+                    elem.setAttribute("x", x2.toString());
+                    elem.setAttribute("y", (y1 - 20).toString());
+                    elem.setAttribute("width", w.toString());
+                    elem.setAttribute("height", h.toString());
+                    elem.setAttribute("stroke", "black");
+                    elem.setAttribute("stroke-width", "1");
+                    elem.setAttribute("fill", "transparent");
+                    elem.setAttribute("value", '[' + site.toString() + '][' + chip.toString() + ']');
+                    elem.setAttribute("onclick", "device_click(this)");
+                    svgTag.appendChild(elem);
+
+                    x1 = x1 + ((chip == 0) ? 100 : 60);
+                    x2 = x2 + 60;
+
+                    Chips++;
+                }
+                y = y + 50;         // site간 간격.
+            }
+            dbgout(`max chip = ${Chips}\n`);
+            var svgContainer = document.getElementById("svgContainer");
+            svgContainer.appendChild(svgTag);
+        });
+
+    </script>
+</head>
+
+<!--
+<body onload="CreateSVG()">
+-->
+<body>
+    <center>
+    <div id="project">
+        <b>Site Map</b>
+        <!--
+        <a target="_blank" href="http://www.leolsi.com"><img src="http://www.leolsi.com/img/logo.gif" style="float:right;"/></a>
+        -->
+    </div>
+    </br>
+    <form name="area">
+        <div id="svgContainer" name="container">
+        </div>
+    </form>
+    <textarea id="console" cols="80" rows="8" style="display:block; resize:none;" readonly></textarea>
+    </center>
+
+		<script language="javascript">
+        var SwitchMapWindow;
+        var DeviceID;
+        var startDut;
+        var endDut;
+        function device_click(device) {
+            DeviceID = device.id;
+            var id = parseInt(device.id) % CHIPsPerBank;
+            var site = Math.floor(parseInt(device.id) / CHIPsPerBank);
+            dbgout(`site = ${site}, id = ${id}\n`);
+
+            startDut = (site * DUTsPerBank) + (id * DUTsPerChip);
+            endDut = startDut + DUTsPerChip;
+
+            if( id == (CHIPsPerBank - 1) ) {     // site에서 마지막 chip.
+                endDut = startDut + (DUTsPerBank - (id * DUTsPerChip));
+            } else {
+                if( (startDut + DUTsPerChip) > (maxDUTs - 1) ) {    // 마지막 site의 마지막 chip.
+                    endDut = maxDUTs;
+                }
+            }
+            dbgout(`dut number : ${startDut} ~ ${endDut-1}\n`);
+
+            var opt = 'toolbar=no, menubar=no, location=no, status=no, ';
+
+            var cnt;
+            var lines;
+            for(cnt = 1; cnt; cnt++) {
+                if( DUTsPerChip <= (cnt * cnt) ) break;
+            }
+            for(lines = 1; lines; lines++) {
+                if( DUTsPerChip <= (cnt * lines) ) break;
+            }
+            dbgout(`cnt = ${cnt}, lines = ${lines}, signalsPerDut = ${signalsPerDut}\n`);
+
+            if( cnt < 3 ) {
+                opt += `width=490, height=${230+(lines * 50)+40+(signalsPerDut * 20)}`;
+            } else {
+                // width = 280 + (n * 50) + 60, height = 120 + 50 + 20 + (n * 50) + 40 + (signalsPerDut * 20) + 40
+                opt += `width=${330 + (cnt * 50)}, height=${230+(lines * 50)+40+(signalsPerDut * 20)}`;
+            }
+            SwitchMapWindow = window.open('/switchMap?', 'Switch Map', opt, true);
+
+            /*
+            dbgout(`window = ${SwitchMapWindow[id]}\n`);
+            if( SwitchMapWindow[id] != undefined ) SwitchMapWindow[id].close();
+            SwitchMapWindow[id] = window.open('_blank', "win"+id.toString(), opt, true);
+            SwitchMapWindow[id].document.write('<!DOCTYPE html><html><head><title>Console Window</title></head><body><center><textarea id="console" cols="82" rows="27"></textarea></br><b>Console Terminal</b></center></body></html>');
+            */
+        }
+
+        $(window).on('beforeunload', function() {
+            if( (SwitchMapWindow != undefined) || (SwitchMapWindow != NaN) )
+                SwitchMapWindow.close();
+            dbgout('beforeunload');
+        });
+
+        function dbgout(s) {
+            $('#console').val( $('#console').val() + s );
+            $('#console').scrollTop( $('#console').prop('scrollHeight') );
+        }
+        </script>
+
+</body>
+</html>
+
+

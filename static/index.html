@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Create DUT Map</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=yes">
+        <!--
+        <link href="./style.css" rel="stylesheet" media="all">
+        <link href="/style.css" rel="stylesheet" media="all">
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.14.3/xlsx.full.min.js"></script>
+        -->
+        <script src="/jquery-3.4.1.min.js"></script>
+        <script src="/xlsx.full.min.js"></script>
+        <!--
+        <script src="/constant.js"></script>
+        <script src="/script.js"></script>
+        <script src="./constant.js"></script>
+        <script src="./script.js"></script>
+        -->
+        <script src="/constant.js"></script>
+        <script src='/script.js'></script>
+        <style>
+            #summery {
+                resize: none;
+            }
+        </style>
+    </head>
+
+    <body>
+        <center>
+        <strong><label for="deviceName">Select Device</label></strong>
+        <select id="deviceName" name="DeviceName" class="class0" style='background-color: powderblue;'>
+            <!--
+            <option class="class0" value="2" style='background-color:coral' disabled>PS1120</option>
+            -->
+            <option class="class0" value="2" style='background-color:coral'>PS1120</option>
+            <option class="class0" value="1" style='background-color:lightgreen' selected="selected">PS1060</option>
+            <option class="class0" value="0" style='background-color:yellow'>PS1030</option>
+        </select>
+
+        <!--
+        <label for="Branch" id="BranchLabel" style="display:inline-block"><strong>H/W Branch<input type="number" id="Branch" min="1" max="5" step="1" value="2"/></strong></label>
+        -->
+        <label for="maxDUTs"><strong>Max DUTs<input type="number" id="maxDUTs" min="256" max="2560" step="256" value="1024"/></strong></label>
+        <label for="signalsPerDut"><strong>Signals per DUT<input type="number" id="signalsPerDut" min="1" max="16" step="1" value="7"/></strong></label>
+        <label for="DUTsPerBank"><strong>DUTs per Bank<input type="number" id="DUTsPerBank" min="0" max="255" step="1" value="0"/></strong></label></br>
+        <input type='button' id='CreateDutMap' value='Create'></input>
+        <input type='button' id='ViewMap' value='view map'></input>
+        </br>
+        <!--
+        <textarea id="summery" cols="80" rows="8" style="display:block; background-color:green; color:red; font-weight:bold; font-size:12px;">Total Switch Chip = 120</textarea>
+        -->
+        <p>
+        <textarea id="summery" cols="80" rows="7" readonly style="display:none; background-color:#034B61; color:white; font-weight:bold; font-size:14px;">Total Switch Chip = 120</textarea>
+        </center>
+        </p>
+        <!--
+        <p>
+        <center>
+        <textarea id="workList" cols="80" rows="7" readonly style="display:block; background-color:#034B61; color:white; font-weight:bold; font-size:12px;">
+* 엑셀 파일 존재 여부를 판단하고, 새로운 파일을 생성하도록 한다.
+* Server에서 전달되는 변수를 정의하고, 정의된 변수에 의해서 DUT Map을 생성하도록 한다.
+* 엑셀 파일에는 모든 경우의 DUT Map이 생성되도록 한다.
+* Switch Chip의 Switch 할당은 Group과 Signal 개수에 따라서 사전에 결정해서 배열로 가지고 있는다.
+  - 최적의 조건을 수식으로 구할 수 없다.
+  - signal 개수가 Row 또는 Column의 개수와 배수 관계에 있어야 Group명령을 사용할 수 있다.
+        </textarea>
+        </center>
+        </p>
+        -->
+
+        <!--
+        </br> </br>
+        <p style="color:red">
+        <b>
+            * 입력한 Bank당 Max DUT 개수가 초과하는 경우, DUTsPerBank는 계산된 값을 사용한다.(PS1030, 1024, 7, 40 인 경우)</br>
+            * Switch Device(PS1120/PS1060/PS1030)와 DUT 개수, Signal 개수를 입력하면, 자동으로 DUT Map을 구성해 준다.</br>
+            * 구성된 DUT Map에 따라서, ATE Command에 대한 Device Command로 자동으로 생성해 준다.</br>
+            * FPGA(RTL Code)에서 처리한 결과와 비교 검토가 가능한다.</br>
+        </b>
+        </p>
+        </br> </br>
+        <div style="color:gray">- "view map"버튼을 누르면, Popup창을 닫고, 새로 생성해야한다.</div>
+        <div style="color:gray">- "DUTsPerBank" 값에 따라서 한 Bank에 연결되는 Switch Chip의 개수가 바뀌어야 한다.</div>
+        <div style="color:black">- "Max DUTs"는 256 단위로 증가한다.</div>
+        <div style="color:black">- "Signals per DUT"는 Max 16 이다.</div>
+        <div style="color:black">- "DUTs per Bank"는 Max 255 이고, PS1030일 경우에는 Max 240 이다.</div>
+        <div style="color:blue; font-weight:bold">- "PS1120"의 경우 H/W 분기에 때문에 자동화가 어렵고, 수작업으로 DUT Map(Switch 구성)을 구성해야 한다.</div>
+        <div style="color:blue; font-weight:bold">- Web Server를 사용하지 않고, HTML로 GUI Application을 작성하는 방법.
+            <ul>
+                <li>window.open()함수에서는 URL 입력으로 요청을 보내게 되어있다.</li>
+                <li>크롬의 경우 보안상의 이유로 Local File을 직접 Access할 수 없다.</li>
+                <li>window.open('_blank', 'Name', option, true)함수로 blank page를 생성할 수 있지만, 동일한 이름으로 새창을 열때 Error가 발생함.</li>
+                <li>document.write()함수로 간단한 HTML Page는 생성할 수 있지만, 복잡한 Page는 생성하기 어렵다.</li>
+            </ul>
+        </div>
+        <div style="color:blue; font-weight:bold">- Node.js의 open module을 이용해서 Server 실행과 동시에 Client가 실행되도록 할 수 있다.</br>(사용자가 Server를 따로 실행할 필요가 없고, Server가 실행 중인 것을 확인할 수 없다.)
+        -->
+
+    </body>
+</html>

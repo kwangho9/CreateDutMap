@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <style>
+        body {
+            background-color: lightblue;
+        }
+
+        #project { text-align: center; font-size:200%;}
+    </style>
+
+    <!-- jquery Library -->
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+    <!-- 버튼 Event Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.14.3/xlsx.full.min.js"></script>
+    <!--
+    <script src="./static/constant.js"></script>
+    -->
+    <script>
+        var CHIPsPerBank;
+        var maxDUTs;
+        var maxBank;
+        var SwitchMap;
+        var device;
+        var signalsPerDut;
+        var DUTsPerBank;
+        var DUTsPerChip;
+
+        var deviceName = ["PS1030", "PS1060", "PS1120"];
+        var DUTs = [];              // DUT들에 대한 배열을 선언한다.
+        function makeSVG(svg, tag, attrs) {
+            var elem = document.createElementNS('http://www.w3.org/2000/svg', tag);
+            for( var k in attrs) {
+                elem.setAttribute(k, attrs[k]);
+            }
+            svg.appendChild(elem);
+
+            return elem;
+        }
+
+        $(document).ready(function(){
+            // 부모 윈도우의 요소를 read한다.
+//            var site = opener.document.getElementById('siteNumber').value;
+
+            // 부모 윈도우의 변수를 참조한다.
+            maxDUTs = opener.maxDUTs;
+            maxBank = opener.maxBank;
+            SwitchMap = opener.SwitchMap;
+//            dbgout(`SwitchMap = ${opener.SwitchMap}\n`);
+//            SwitchMap = opener.usedSwitchMap;
+//            dbgout(`usedSwitchMap = ${opener.usedSwitchMap}\n`);
+            device = opener.device;
+            signalsPerDut = opener.signalsPerDut;
+            DUTsPerBank = opener.DUTsPerBank;
+            DUTsPerChip = opener.DUTsPerChip;
+            CHIPsPerBank = opener.CHIPsPerBank;
+            dbgout(` - DUTsPerChip = ${DUTsPerChip}\n`);
+            dbgout(` - CHIPsPerBank = ${CHIPsPerBank}\n`);
+
+            var deviceId = opener.DeviceID;
+            var startDut = opener.startDut;
+            var endDut = opener.endDut;
+            var id = parseInt(deviceId) % CHIPsPerBank;
+            var site = Math.floor(parseInt(deviceId) / CHIPsPerBank);
+//            dbgout(`site = ${site}, id = ${id}\n`);
+
+            var width = window.innerWidth - 40;
+            var height = window.innerHeight - 159;// 500;
+
+            // SVG(Scalable Vector Graphics) 영역 생성하기. -> 640 x 600
+            var svgTag = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svgTag.setAttributeNS(null, "id", "SwitchMap");
+            svgTag.setAttributeNS(null, "align", "center");
+            svgTag.setAttributeNS(null, "width", width.toString());
+            svgTag.setAttributeNS(null, "height", height.toString());
+//            dbgout(`1. windows height : ${window.innerHeight}, width : ${window.innerWidth}\n`);
+
+            var sx = 0;
+            var sy = 0;
+            var w = 80;             // ATE rectigure width : 80
+            var h = height - 2;     // (window.height - 40) - 2
+            var dx = 0;
+            var dy = 25;            // "ATE" text y-axis distance
+            var x = 0;
+            var y = 0;
+
+            x = sx + 1;             // ATE x-start.
+            y = sy + 1;             // ATE y-start.
+            // ATE rectigure.
+            var elem = makeSVG(svgTag, 'rect', {x:x, y:y, width:w, height:h, stroke:'black', 'stroke-width':1, fill:'transparent'});
+//            svgTag.appendChild(elem);
+
+            // ATE text display
+            elem = makeSVG(svgTag, 'text', {x:x+parseInt(w/2), y:y+dy, 'font-weight':'bold', 'font-size':'24px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+            elem.textContent = 'ATE';
+
+//            dbgout(`2. ATE rect(${sx}, ${sy}, ${w}, ${h}), text(${sx + parseInt(w/2)}, ${sy+dy})\n`);
+
+            // (80, 30) to (160, 30) line draw & text write.
+            x = sx + 80;            // "SPI-x" x-start.
+            y = sy + 25;            // "SPI-x" y-start.
+            w = 80;                 // "SPI-x" line length.
+            dy = 6;                 // "SPI-x" text y-axis distance.
+            elem = makeSVG(svgTag, 'line', {x1:x, y1:y, x2:x+w, y2:y, stroke:'green', 'stroke-width':2, opacity:1});
+
+            elem = makeSVG(svgTag, 'text', {x:x+parseInt(w/2), y:y-dy, 'font-weight':'bold', 'font-size':'12px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+            elem.textContent = 'SPI-'+site.toString();
+
+//            dbgout(`3. SPI-x line : (${x}, ${y}) -> (${x+w}, ${y}), text(${x + parseInt(w/2)}, ${y-dy})\n`);
+
+            x = sx + 160;           // "FPGA" rect x-start.
+            y = sy + 1;             // "FPGA" rect y-start.
+            h = 50;                 // "FPGA" rect height.
+            w = width - (160 + 2);  // "FPGA" rect width.
+            // FPGA text display
+            elem = makeSVG(svgTag, 'text', {x:x+parseInt(w/2), y:y+parseInt(h/2), 'font-weight':'bold', 'font-size':'24px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+            elem.textContent = 'FPGA';
+            // FPGA rectigure.
+            elem = makeSVG(svgTag, 'rect', {x:x, y:y, width:w, height:h, stroke:'black', 'stroke-width':1, fill:'transparent'});
+
+//            dbgout(`4. FPGA rect(${sx}, ${sy}, ${w}, ${h}), text(${sx + parseInt(w/2)}, ${sy + parseInt(h/2)})\n`);
+
+            // 220 ~ 320
+            // 60 + 10 + .... + 10
+            var Lines;
+            var dutCnt;
+            for(dutCnt = 1; dutCnt; dutCnt++) {
+                if( DUTsPerChip <= (dutCnt * dutCnt) ) break;
+            }
+            for(Lines = 1; Lines; Lines++) {
+                if( DUTsPerChip <= (dutCnt * Lines) ) break;
+            }
+
+            h = 20 + (Lines * 50) + 20;             // "DUT" rect y-axis distance.
+            h = h + (parseInt(((signalsPerDut * 20) + 20) / 2) - 50);   // Switch In/Out text y-axis distance.
+//            dbgout(`DUTsPerChip = ${DUTsPerChip}, Lines = ${Lines}, h = ${h}\n`);
+
+            x = sx + (160 + 30);        // "SPI[x]" line x-start.
+            y = sy + 50;                // "SPI[x]" line y-start.
+            dx = 40;                    // "SPI[x]" text x-axis distance.
+            elem = makeSVG(svgTag, 'line', {x1:x, y1:y, x2:x, y2:y+h, stroke:'green', 'stroke-width':2, opacity:1});
+            elem = makeSVG(svgTag, 'text', {x:x-dx, y:y+parseInt(h/2), 'font-weight':'bold', 'font-size':'12px'});
+            elem.textContent = 'SPI['+site.toString()+']';
+
+//            dbgout(`5. SPI[x] line(${sx}, ${sy}, ${sx}, ${sy+h}), text(${sx - 40}, ${sy + parseInt(h/2)})\n`);
+
+            x = sx + (190 - 30);          // "PS1xxx" x-start.
+            y = sy + (50 + h);            // "PS1xxx" y-start.
+            dx = 80;                      // ATE Measure Line x-start.
+            dy = 15;                     // "#id" text y-axis distance.
+            w = 60;
+            h = 60;
+            elem = makeSVG(svgTag, 'line', {x1:x-dx, y1:y+parseInt(h/2), x2:x, y2:y+parseInt(h/2), stroke:'blue', 'stroke-width':3, opacity:1});
+
+            elem = makeSVG(svgTag, 'text', {x:x+parseInt(w/2), y:y+parseInt(h/2), 'font-weight':'bold', 'font-size':'12px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+            elem.textContent = deviceName[device];
+            elem = makeSVG(svgTag, 'text', {x:x+parseInt(w/2), y:y+parseInt(h/2)+dy, 'font-weight':'bold', 'font-size':'12px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+            elem.textContent = '# ' + id.toString();
+
+            elem = makeSVG(svgTag, 'rect', {id:deviceName[device], x:x, y:y, width:w, height:h, stroke:'black', 'stroke-width':1, fill:'transparent'});
+
+//            dbgout(`6. PS1120 rect(${x}, ${y}, ${w}, ${h})\n`);
+
+            x = sx + (160 + 60);                // 80 + 80 + 60
+            y = sy + (y + parseInt(h/2));       // y좌표 + 30
+            w = 60;                             // line length.
+            h = signalsPerDut * 10;             // (signal x 20) / 2
+            dbgout(`6. PS1120 rect(${x}, ${y}, ${w}, ${h})\n`);
+            elem = makeSVG(svgTag, 'line', {class:"SwitchInfo", x1:x+w, y1:y-h, x2:x+w, y2:y+h, stroke:'blue', 'stroke-width':3, opacity:1});
+            elem = makeSVG(svgTag, 'line', {class:"SwitchInfo", x1:x, y1:y, x2:x+w, y2:y, stroke:'blue', 'stroke-width':3, opacity:1});
+            elem = makeSVG(svgTag, 'line', {class:"SwitchInfo", x1:x+w-2, y1:y-h, x2:x+w+10, y2:y-h, stroke:'blue', 'stroke-width':3, opacity:1});
+            elem = makeSVG(svgTag, 'line', {class:"SwitchInfo", x1:x+w-2, y1:y+h, x2:x+w+10, y2:y+h, stroke:'blue', 'stroke-width':3, opacity:1});
+
+            elem = makeSVG(svgTag, 'text', {id:"DutNumber", class:"SwitchInfo", x:x+parseInt(w/2), y:y-10, 'font-weight':'bold', 'font-size':'12px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+            elem.textContent = 'DUT-'+startDut.toString();
+
+            dbgout(`7. start position (${x}, ${y}, ${w}, ${h})\n`);
+            x = sx + 290;           // 80 + 80 + 60 + 60 + 10 = 290
+            y = sy + y - h + 10;
+
+            dy = 20;                // signal display distance.
+            for(var sig=0; sig < signalsPerDut; sig++) {
+                var x1 = x + 53;
+                var y1 = y + (dy * sig);
+                dbgout(`8. start position (${x1}, ${y1})\n`);
+                elem = makeSVG(svgTag, 'line', {class:"SwitchInfo", x1:x1, y1:y1, x2:x1+25, y2:y1-9, stroke:'black', 'stroke-width':1, opacity:1});
+
+                var cx = x + 50;
+                var cy = y;
+                elem = makeSVG(svgTag, 'circle', {class:"SwitchInfo", cx:cx, cy:cy+(dy*sig), r:3, stroke:'black', 'stroke-width':1, fill:"yellow"});
+
+                elem = makeSVG(svgTag, 'circle', {class:"SwitchInfo", cx:cx+30, cy:cy+(dy*sig), r:3, stroke:'black', 'stroke-width':1, fill:"yellow"});
+
+                x1 = x + 20;
+                elem = makeSVG(svgTag, 'text', {id:"Ain"+sig.toString(), class:"SwitchInfo", x:x1, y:y1, 'font-weight':'bold', 'font-size':'12px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+                elem.textContent = 'Ain x';
+
+                x1 = x + 115;
+                elem = makeSVG(svgTag, 'text', {id:"Aout"+sig.toString(), class:"SwitchInfo", x:x1, y:y1, 'font-weight':'bold', 'font-size':'12px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+                elem.textContent = 'Aout x';
+            }
+
+            x = sx + 280;       // 160 + 120
+            dbgout(`9. start position (${x}, ${y})\n`);
+            /*
+            elem = makeSVG(svgTag, 'circle', {cx:x, cy:y, r:3, stroke:'black', 'stroke-width':1, fill:"red"});
+            */
+
+            w = 40;
+            h = 40;
+            dx = 10;
+            dy = 10;
+//            x = 280;       // 160 + 120
+//            y = 70;        // 50 + 20
+            for(var dut=startDut; dut<endDut; dut++) {
+                x = 280 + ((dut - startDut) % dutCnt) * (w + dx);
+                y = 70 + parseInt((dut - startDut) / dutCnt) * (h + dy);
+//                dbgout(`x = ${x}, y = ${y}\n`);
+
+                elem = makeSVG(svgTag, 'text', {x:x+parseInt(w/2), y:y+parseInt(h/2)-5, 'font-weight':'bold', 'font-size':'12px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+                elem.textContent = 'DUT';
+
+                elem = makeSVG(svgTag, 'text', {x:x+parseInt(w/2), y:y+parseInt(h/2)+5, 'font-weight':'bold', 'font-size':'10px', 'dominant-baseline':'middle', 'text-anchor':'middle'});
+                elem.textContent = '#'+dut.toString();
+
+                elem = makeSVG(svgTag, 'rect', {id:"DUT"+dut.toString(), class:"DutClass", x:x, y:y, width:w, height:h, stroke:'black', 'stroke-width':1, fill:'transparent', value:dut, onclick:"DutClick(this)"});
+            }
+
+            var svgContainer = document.getElementById("svgContainer");
+            svgContainer.appendChild(svgTag);
+
+            $('.SwitchInfo').css('visibility', 'hidden');
+        });
+
+    </script>
+</head>
+
+<!--
+<body onload="CreateSVG()">
+-->
+<body>
+    <center>
+    <div id="project">
+        <b>Switch Map for DUTs</b>
+        <!--
+        <a target="_blank" href="http://www.leolsi.com"><img src="http://www.leolsi.com/img/logo.gif" style="float:right;"/></a>
+        -->
+    </div>
+    </br>
+    <form name="area">
+        <div id="svgContainer" name="container">
+        </div>
+    </form>
+    <textarea id="console" cols="60" rows="4" style="display:block; resize:none;"></textarea>
+    </center>
+
+		<script language="javascript">
+
+
+//        var debugFlag = true;
+
+/*
+        $(document).on('click', '.deviceRect', function(e) {
+            dbgout(`type = ${e.type}, target id = ${e.target.id}, target class = ${e.target.class}\n`);
+            dbgout(`event target nodeName = ${e.target.nodeName}\n`);
+        });
+
+        $('.deviceRect').click(function() {
+            dbgout(`click event\n`);
+        });
+*/
+        /*
+        */
+
+        /*
+        */
+
+        var SwitchMapWindow;
+/*
+        function device_click(dev) {
+//            dbgout(`id = ${dev.id}\n`);
+            var id = parseInt(dev.id) % CHIPsPerBank;
+            var site = Math.floor(parseInt(dev.id) / CHIPsPerBank);
+            dbgout(`site = ${site}, id = ${id}\n`);
+
+            var startDut = (site * DUTsPerBank) + (id * DUTsPerChip);
+            var endDut = startDut + DUTsPerChip;
+
+            if( id == (CHIPsPerBank - 1) ) {     // site에서 마지막 chip.
+                endDut = startDut + (DUTsPerBank - (id * DUTsPerChip));
+            } else {
+                if( (startDut + DUTsPerChip) > (maxDUTs - 1) ) {    // 마지막 site의 마지막 chip.
+                    endDut = maxDUTs;
+                }
+            }
+            dbgout(`dut number : ${startDut} ~ ${endDut-1}\n`);
+
+            var opt = 'toolbar=no, menubar=no, location=no, status=no, width=800, height=600';
+            SwitchMapWindow = window.open('/switchMap?', 'Switch Map', opt, true);
+        }
+
+*/
+        function DutClick(dut) {
+            var dutNumber = $(dut).attr('value');
+            $('.DutClass').css("stroke-width", "1").css("stroke", "black");
+            $(dut).css("stroke-width", "3").css("stroke", "red");
+
+            $('#DutNumber').text('DUT-'+$(dut).attr('value'));
+            dbgout(`device = ${device}\n`);
+            dbgout(`signalsPerDut = ${signalsPerDut}\n`);
+            dbgout(`dutNumber = ${dutNumber}\n`);
+            dbgout(`DUTsPerChip = ${DUTsPerChip}\n`);
+            dbgout(`DUTsPerBank = ${DUTsPerBank}\n`);
+            var map;
+            if( DUTsPerBank == 0 ) {
+                var ofs = dutNumber % DUTsPerChip;
+//                dbgout(`SwitchMap = ${SwitchMap[device][signalsPerDut-1][dutNumber%DUTsPerChip]}\n`);
+                map = SwitchMap[dutNumber%DUTsPerChip];
+            } else {
+//                dbgout(`SwitchMap = ${SwitchMap[device][signalsPerDut-1][(dutNumber % DUTsPerBank) % DUTsPerChip]}\n`);
+//                map = SwitchMap[device][signalsPerDut-1][(dutNumber%DUTsPerBank)%DUTsPerChip];
+                map = SwitchMap[(dutNumber % DUTsPerBank) % DUTsPerChip];
+            }
+            dbgout(`signal : `);
+            for(var sig=0; sig < signalsPerDut; sig++) {
+                dbgout(`${map[sig]} `);
+                $('#Ain'+sig.toString()).text("Ain "+map[sig].toString());
+                $('#Aout'+sig.toString()).text("Aout "+map[sig].toString());
+            }
+            dbgout('\n');
+            $('.SwitchInfo').css('visibility', 'visible');
+        }
+
+        function dbgout(s) {
+            /*
+        	var text = document.getElementById("console");
+            text.value += s;
+            text.scrollTop = text.scrollHeight;
+            */
+//            var element = $('#console')[0];
+//            if( debugFlag == true ) {
+//                element.val( element.val() + s );
+//                element.scrollTop( element.prop('scrollHeight') );
+                $('#console').val( $('#console').val() + s );
+                $('#console').scrollTop( $('#console').prop('scrollHeight') );
+//            }
+        }
+        </script>
+
+</body>
+</html>
+
+

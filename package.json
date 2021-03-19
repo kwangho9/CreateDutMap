@@ -1,0 +1,25 @@
+{
+  "name": "CreateDutMap",
+  "version": "1.0.0",
+  "description": "",
+  "main": "CreateDutMap.js",
+  "scripts": {
+    "start": "node CreateDutMap.js",
+    "build": "pkg -t node12-win-x64 --out-path build CreateDutMap.js --config package.json",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "pkg": {
+    "assets": "static/**/*"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "exceljs": "^4.2.0",
+    "express": "^4.17.1",
+    "fs": "0.0.1-security",
+    "open": "^7.3.0",
+    "path": "^0.12.7",
+    "save": "^2.4.0"
+  }
+}
